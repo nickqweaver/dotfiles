@@ -1,0 +1,4 @@
+.dotfiles
+.config/iterm2
+.config/opencode/node_modules
+.config/opencode/.gitignore

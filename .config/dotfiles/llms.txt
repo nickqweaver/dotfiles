@@ -1,0 +1,54 @@
+# Dotfiles Setup Instructions for AI Agents
+
+This repository contains dotfiles managed via the bare git repository method.
+The git database lives at ~/.dotfiles while tracked files remain in their
+standard locations.
+
+## Quick Setup (Run in Order)
+
+1. git clone --bare git@github.com:nickqweaver/dotfiles.git $HOME/.dotfiles
+2. alias dotfiles='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+3. dotfiles config --local status.showUntrackedFiles no
+4. dotfiles checkout
+5. source ~/.zshrc
+6. cd ~/.config/opencode && bun install
+7. nvim --headless -c "Lazy install" -c "qa"
+
+If step 4 fails due to existing files, back them up:
+dotfiles checkout 2>&1 | grep -E "\s+\." | awk '{print $1}' | xargs -I{} mv {} {}.bak
+
+## Repository Structure
+
+~/.config/nvim/                  - Neovim config (Lua, lazy.nvim plugin manager)
+~/.config/ghostty/config         - Ghostty terminal
+~/.config/opencode/opencode.json - OpenCode AI agent definitions
+~/.config/opencode/package.json  - OpenCode dependencies
+~/.config/opencode/bun.lock      - OpenCode lockfile
+~/.config/AGENTS.md              - Instructions for AI coding assistants
+~/.config/dotfiles/              - This documentation
+~/.zshrc                         - Zsh shell config (contains dotfiles alias)
+~/.gitconfig                     - Git configuration
+~/.tmux.conf                     - Tmux configuration
+~/.gitignore                     - Global gitignore for dotfiles repo
+
+## Managing Dotfiles
+
+Use the `dotfiles` alias (defined in ~/.zshrc) instead of `git`:
+- dotfiles status
+- dotfiles add <file>
+- dotfiles commit -m "message"
+- dotfiles push
+
+## Platform Compatibility
+
+- macOS: Full support (all configs)
+- Linux: Full support (Ghostty optional on headless servers)
+
+## Dependencies to Install on New Machines
+
+- neovim (>= 0.9)
+- bun (for opencode)
+- ripgrep, fd (for telescope in neovim)
+- node (for LSP servers)
+- tmux
+- ghostty (optional, macOS/Linux desktop only)

@@ -1,0 +1,6 @@
+# Disable minimum contrast to prevent washed out colors
+minimum-contrast = 1.0
+window-colorspace = display-p3
+bold-is-bright = true
+# Theme
+theme = Citruszest
