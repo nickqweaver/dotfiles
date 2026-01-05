@@ -108,6 +108,11 @@ command -v fd >/dev/null 2>&1 && alias find='fd'
 # Better grep (if ripgrep is installed)
 command -v rg >/dev/null 2>&1 && alias grep='rg'
 
+# AWS SSO aliases
+alias ae='aws-sso exec --account=926397971252 --role=SOC-Developer'
+alias al='aws-sso login'
+alias gi='aws get-caller-identity'
+
 # Auto-completion for common tools
 autoload -U compinit && compinit
 
