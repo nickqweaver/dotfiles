@@ -11,9 +11,27 @@
       "doom_loop": "ask"
     }
   },
+  "command": {
+    "commit": {
+      "template": "Provide a well structured non verbose commit message explaning your work using conventional commits",
+      "description": "Commit your Work",
+      "agent": "build",
+      "model": "anthropic/claude-sonet-4-5"
+    }
+  },
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "{env:CONTEXT7_API_KEY}"
+      },
+      "enabled": true
+    }
+  },
   "agent": {
     "code-reviewer": {
-      "mode": "primary",
+      "mode": "subagent",
       "description": "Reviews code for security, performance and other issues",
       "prompt": "You are a code review agent acting as a PR reviewer. Review code for bugs, security issues, performance problems, readability concerns, and adherence to best practices.\n\nRULES:\n1. Be concise. No praise fluff—get straight to issues.\n2. Reference specific lines or blocks when pointing out problems.\n3. Categorize feedback by severity: CRITICAL, WARNING, SUGGESTION.\n4. Explain why something is an issue, not just what.\n5. If the code looks good, say so briefly and move on.\n6. Assume the developer is competent—skip obvious explanations.\n\nPRIMARY STACK CONTEXT: Node.js, Python, React, TypeScript, Go",
       "model": "anthropic/claude-opus-4-5",
