@@ -2,20 +2,54 @@ return {
 	"neovim/nvim-lspconfig",
 	event = { "BufReadPre", "BufNewFile" },
 	dependencies = {
-		"hrsh7th/cmp-nvim-lsp",
+		"saghen/blink.cmp",
 		{ "antosha417/nvim-lsp-file-operations", config = true },
-		{ "folke/neodev.nvim", opts = {} },
 	},
 	config = function()
-		-- import lspconfig plugin
-		local lspconfig = require("lspconfig")
-		-- import mason_lspconfig plugin
-		local mason_lspconfig = require("mason-lspconfig")
+		local keymap = vim.keymap
+		local diagnostic_severity = vim.diagnostic.severity
 
-		-- import cmp-nvim-lsp plugin
-		local cmp_nvim_lsp = require("cmp_nvim_lsp")
+		local function find_root(path, markers)
+			local match = vim.fs.find(markers, { path = path, upward = true })[1]
+			return match and vim.fs.dirname(match) or nil
+		end
 
-		local keymap = vim.keymap -- for conciseness
+		local function has_graphql_config(path)
+			return find_root(path, {
+				".graphqlrc",
+				".graphqlrc.json",
+				".graphqlrc.yml",
+				".graphqlrc.yaml",
+				".graphqlrc.js",
+				".graphqlrc.ts",
+				"graphql.config.js",
+				"graphql.config.ts",
+				"graphql.config.mjs",
+				"graphql.config.cjs",
+			})
+		end
+
+		local function find_tailwind_stylesheet(root_dir)
+			if not root_dir then
+				return nil
+			end
+
+			for _, file in ipairs(vim.fs.find({ "*.css", "*.scss", "*.pcss" }, {
+				path = root_dir,
+				upward = false,
+				type = "file",
+				limit = math.huge,
+			})) do
+				local lines = vim.fn.readfile(file)
+				for _, line in ipairs(lines) do
+					if line:match('@import%s+["\']tailwindcss["\']') then
+						return file
+					end
+				end
+			end
+
+			return nil
+		end
 
 		vim.api.nvim_create_autocmd("LspAttach", {
 			group = vim.api.nvim_create_augroup("UserLspConfig", {}),
@@ -63,177 +97,190 @@ return {
 			end,
 		})
 
-		-- used to enable autocompletion (assign to every lsp server config)
-		local capabilities = cmp_nvim_lsp.default_capabilities()
-
-		-- Change the Diagnostic symbols in the sign column (gutter)
-		local signs = { Error = " ", Warn = " ", Hint = "󰠠 ", Info = " " }
-		for type, icon in pairs(signs) do
-			local hl = "DiagnosticSign" .. type
-			vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
-		end
-
-		-- Setup mason-lspconfig with handlers
-		mason_lspconfig.setup({
-			automatic_installation = true,
-			handlers = {
-				-- Default handler for all servers
-				function(server_name)
-					lspconfig[server_name].setup({
-						capabilities = capabilities,
-					})
-				end,
-
-				-- Specific handler for elixirls
-				["elixirls"] = function()
-					lspconfig.elixirls.setup({
-						cmd = { vim.fn.stdpath("data") .. "/mason/bin/elixir-ls" },
-						capabilities = capabilities,
-						settings = {
-							elixirLS = {
-								dialyzerEnabled = false,
-								fetchDeps = false,
-							},
-						},
-					})
-				end,
-
-				-- Specific handler for svelte
-				["svelte"] = function()
-					lspconfig.svelte.setup({
-						capabilities = capabilities,
-						on_attach = function(client, bufnr)
-							vim.api.nvim_create_autocmd("BufWritePost", {
-								pattern = { "*.js", "*.ts" },
-								callback = function(ctx)
-									client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.match })
-								end,
-							})
-						end,
-					})
-				end,
-
-				-- Specific handler for graphql
-				["graphql"] = function()
-					lspconfig.graphql.setup({
-						capabilities = capabilities,
-						filetypes = { "graphql", "gql", "svelte", "typescriptreact", "javascriptreact" },
-					})
-				end,
-
-				-- Specific handler for emmet_ls
-				["emmet_ls"] = function()
-					lspconfig.emmet_ls.setup({
-						capabilities = capabilities,
-						filetypes = {
-							"html",
-							"typescriptreact",
-							"javascriptreact",
-							"css",
-							"sass",
-							"scss",
-							"less",
-							"svelte",
-						},
-					})
-				end,
-
-			-- Specific handler for lua_ls
-			["lua_ls"] = function()
-				lspconfig.lua_ls.setup({
-					capabilities = capabilities,
-					settings = {
-						Lua = {
-							diagnostics = {
-								globals = { "vim" },
-							},
-							completion = {
-								callSnippet = "Replace",
-							},
-						},
-					},
-				})
-			end,
-
-			-- Specific handler for gopls (Go)
-			["gopls"] = function()
-				lspconfig.gopls.setup({
-					capabilities = capabilities,
-					settings = {
-						gopls = {
-							analyses = {
-								unusedparams = true,
-								shadow = true,
-							},
-							staticcheck = true,
-							gofumpt = true,
-							usePlaceholders = true,
-							completeUnimported = true,
-						},
-					},
-				})
-			end,
-
-				-- Specific handler for ts_ls with performance optimizations
-				["ts_ls"] = function()
-					lspconfig.ts_ls.setup({
-						capabilities = capabilities,
-						-- Proper root directory detection for TypeScript projects
-						root_dir = lspconfig.util.root_pattern("tsconfig.json", "jsconfig.json", "package.json", ".git"),
-						-- Disable single file support to improve performance
-						single_file_support = false,
-						-- Use project's TypeScript version if available
-						init_options = {
-							preferences = {
-								-- Performance optimizations
-								disableSuggestions = false,
-								quotePreference = "auto",
-								includeCompletionsForModuleExports = true,
-								includeCompletionsForImportStatements = true,
-								includeCompletionsWithSnippetText = true,
-								includeAutomaticOptionalChainCompletions = true,
-								includeCompletionsWithInsertText = true,
-								importModuleSpecifierPreference = "shortest",
-								importModuleSpecifierEnding = "auto",
-							},
-						},
-						settings = {
-							typescript = {
-								inlayHints = {
-									includeInlayParameterNameHints = "all",
-									includeInlayParameterNameHintsWhenArgumentMatchesName = false,
-									includeInlayFunctionParameterTypeHints = true,
-									includeInlayVariableTypeHints = true,
-									includeInlayPropertyDeclarationTypeHints = true,
-									includeInlayFunctionLikeReturnTypeHints = true,
-									includeInlayEnumMemberValueHints = true,
-								},
-								suggest = {
-									includeCompletionsForModuleExports = true,
-								},
-							},
-							javascript = {
-								inlayHints = {
-									includeInlayParameterNameHints = "all",
-									includeInlayParameterNameHintsWhenArgumentMatchesName = false,
-									includeInlayFunctionParameterTypeHints = true,
-									includeInlayVariableTypeHints = true,
-									includeInlayPropertyDeclarationTypeHints = true,
-									includeInlayFunctionLikeReturnTypeHints = true,
-									includeInlayEnumMemberValueHints = true,
-								},
-								suggest = {
-									includeCompletionsForModuleExports = true,
-								},
-							},
-						},
-						-- Debounce to reduce server load
-						flags = {
-							debounce_text_changes = 150,
-						},
-					})
-				end,
+		local capabilities = require("blink.cmp").get_lsp_capabilities()
+		capabilities.workspace = vim.tbl_deep_extend("force", capabilities.workspace or {}, {
+			didChangeConfiguration = {
+				dynamicRegistration = true,
+			},
+			didChangeWorkspaceFolders = {
+				dynamicRegistration = true,
 			},
 		})
+
+		vim.diagnostic.config({
+			signs = {
+				text = {
+					[diagnostic_severity.ERROR] = " ",
+					[diagnostic_severity.WARN] = " ",
+					[diagnostic_severity.HINT] = "󰠠 ",
+					[diagnostic_severity.INFO] = " ",
+				},
+			},
+		})
+
+		vim.lsp.handlers["workspace/diagnostic/refresh"] = function()
+			return vim.NIL
+		end
+
+		local servers = {
+			"html",
+			"cssls",
+			"prismals",
+			"pyright",
+		}
+
+		for _, server in ipairs(servers) do
+			vim.lsp.config(server, {
+				capabilities = capabilities,
+			})
+			vim.lsp.enable(server)
+		end
+
+		vim.lsp.config("tailwindcss", {
+			capabilities = capabilities,
+			before_init = function(_, config)
+				config.settings = config.settings or {}
+				config.settings.editor = config.settings.editor or {}
+				config.settings.editor.tabSize = config.settings.editor.tabSize or vim.lsp.util.get_effective_tabstop()
+				config.settings.tailwindCSS = config.settings.tailwindCSS or {}
+				config.settings.tailwindCSS.experimental = config.settings.tailwindCSS.experimental or {}
+				config.settings.tailwindCSS.experimental.configFile = config.settings.tailwindCSS.experimental.configFile
+					or find_tailwind_stylesheet(config.root_dir)
+			end,
+		})
+		vim.lsp.enable("tailwindcss")
+
+		vim.lsp.config("elixirls", {
+			capabilities = capabilities,
+			settings = {
+				elixirLS = {
+					dialyzerEnabled = false,
+					fetchDeps = false,
+				},
+			},
+		})
+		vim.lsp.enable("elixirls")
+
+		vim.lsp.config("svelte", {
+			capabilities = capabilities,
+			on_attach = function(client)
+				vim.api.nvim_create_autocmd("BufWritePost", {
+					pattern = { "*.js", "*.ts" },
+					callback = function(ctx)
+						client.notify("$/onDidChangeTsOrJsFile", {
+							uri = vim.uri_from_fname(ctx.match),
+						})
+					end,
+				})
+			end,
+		})
+		vim.lsp.enable("svelte")
+
+		vim.lsp.config("graphql", {
+			capabilities = capabilities,
+			filetypes = { "graphql", "gql", "typescriptreact", "javascriptreact" },
+			root_dir = function(bufnr, on_dir)
+				local root = has_graphql_config(vim.api.nvim_buf_get_name(bufnr))
+				if root then
+					on_dir(root)
+				end
+			end,
+		})
+		vim.lsp.enable("graphql")
+
+		vim.lsp.config("emmet_ls", {
+			capabilities = capabilities,
+			root_dir = function(bufnr, on_dir)
+				on_dir(find_root(vim.api.nvim_buf_get_name(bufnr), { "package.json", ".git" }))
+			end,
+			filetypes = {
+				"html",
+				"typescriptreact",
+				"javascriptreact",
+				"css",
+				"sass",
+				"scss",
+				"less",
+				"svelte",
+			},
+		})
+		vim.lsp.enable("emmet_ls")
+
+		vim.lsp.config("lua_ls", {
+			capabilities = capabilities,
+			settings = {
+				Lua = {
+					diagnostics = {
+						globals = { "vim" },
+					},
+					completion = {
+						callSnippet = "Replace",
+					},
+				},
+			},
+		})
+		vim.lsp.enable("lua_ls")
+
+		vim.lsp.config("gopls", {
+			capabilities = capabilities,
+			settings = {
+				gopls = {
+					analyses = {
+						unusedparams = true,
+						shadow = true,
+					},
+					staticcheck = true,
+					gofumpt = true,
+					usePlaceholders = true,
+					completeUnimported = true,
+				},
+			},
+		})
+		vim.lsp.enable("gopls")
+
+		local function vtsls_language_settings()
+			return {
+				inlayHints = {
+					parameterNames = {
+						enabled = "all",
+						suppressWhenArgumentMatchesName = false,
+					},
+					parameterTypes = { enabled = true },
+					variableTypes = { enabled = true },
+					propertyDeclarationTypes = { enabled = true },
+					functionLikeReturnTypes = { enabled = true },
+					enumMemberValues = { enabled = true },
+				},
+				preferences = {
+					quoteStyle = "auto",
+					importModuleSpecifier = "shortest",
+					importModuleSpecifierEnding = "auto",
+				},
+				suggest = {
+					enabled = true,
+					autoImports = true,
+					includeAutomaticOptionalChainCompletions = true,
+					includeCompletionsForImportStatements = true,
+				},
+			}
+		end
+
+		vim.lsp.config("vtsls", {
+			capabilities = capabilities,
+			init_options = {
+				hostInfo = "neovim",
+			},
+			settings = {
+				vtsls = {
+					autoUseWorkspaceTsdk = true,
+				},
+				typescript = vtsls_language_settings(),
+				javascript = vtsls_language_settings(),
+			},
+			flags = {
+				debounce_text_changes = 150,
+			},
+		})
+		vim.lsp.enable("vtsls")
 	end,
 }

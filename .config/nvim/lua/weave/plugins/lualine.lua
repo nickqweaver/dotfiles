@@ -1,6 +1,9 @@
 return {
   "nvim-lualine/lualine.nvim",
-  dependencies = { "nvim-tree/nvim-web-devicons" },
+  dependencies = {
+    "nvim-tree/nvim-web-devicons",
+    "stevearc/aerial.nvim",
+  },
   config = function()
     local lualine = require("lualine")
     local lazy_status = require("lazy.status") -- to configure lazy pending updates count
@@ -14,6 +17,7 @@ return {
       fg = "#c3ccdc",
       bg = "#112638",
       inactive_bg = "#2c3043",
+      semilightgray = "#7f8490",
     }
 
     local my_lualine_theme = {
@@ -55,6 +59,16 @@ return {
         theme = my_lualine_theme,
       },
       sections = {
+        lualine_c = {
+          { "filename" },
+          {
+            "aerial",
+            sep = " > ",
+            depth = 4,
+            dense = true,
+            dense_sep = ".",
+          },
+        },
         lualine_x = {
           {
             lazy_status.updates,
