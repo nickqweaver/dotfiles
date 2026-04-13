@@ -36,6 +36,9 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
+# Refresh PATH to the currently configured default Node version.
+nvm use --silent default >/dev/null 2>&1
+
 # pnpm setup
 export PNPM_HOME="$HOME/Library/pnpm"
 case ":$PATH:" in
@@ -49,6 +52,9 @@ esac
 # bun
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+export PATH=$PATH:$(go env GOPATH)/bin
+typeset -U path PATH
+path=("$HOME/.local/bin" $path)
 
 # History settings
 HISTSIZE=10000
@@ -121,4 +127,3 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
 # Colored completion
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
-

@@ -8,6 +8,7 @@ return {
 	config = function()
 		local keymap = vim.keymap
 		local diagnostic_severity = vim.diagnostic.severity
+		local shell = vim.fn.exepath("zsh") ~= "" and vim.fn.exepath("zsh") or "/bin/zsh"
 
 		local function find_root(path, markers)
 			local match = vim.fs.find(markers, { path = path, upward = true })[1]
@@ -27,6 +28,10 @@ return {
 				"graphql.config.mjs",
 				"graphql.config.cjs",
 			})
+		end
+
+		local function shell_cmd(command)
+			return { shell, "-lc", "exec " .. command }
 		end
 
 		local function find_tailwind_stylesheet(root_dir)
@@ -137,6 +142,7 @@ return {
 		end
 
 		vim.lsp.config("tailwindcss", {
+			cmd = shell_cmd("tailwindcss-language-server --stdio"),
 			capabilities = capabilities,
 			before_init = function(_, config)
 				config.settings = config.settings or {}
@@ -177,6 +183,7 @@ return {
 		vim.lsp.enable("svelte")
 
 		vim.lsp.config("graphql", {
+			cmd = shell_cmd("graphql-lsp server -m stream"),
 			capabilities = capabilities,
 			filetypes = { "graphql", "gql", "typescriptreact", "javascriptreact" },
 			root_dir = function(bufnr, on_dir)
@@ -189,6 +196,7 @@ return {
 		vim.lsp.enable("graphql")
 
 		vim.lsp.config("emmet_ls", {
+			cmd = shell_cmd("emmet-ls --stdio"),
 			capabilities = capabilities,
 			root_dir = function(bufnr, on_dir)
 				on_dir(find_root(vim.api.nvim_buf_get_name(bufnr), { "package.json", ".git" }))
@@ -266,6 +274,7 @@ return {
 		end
 
 		vim.lsp.config("vtsls", {
+			cmd = shell_cmd("vtsls --stdio"),
 			capabilities = capabilities,
 			init_options = {
 				hostInfo = "neovim",
