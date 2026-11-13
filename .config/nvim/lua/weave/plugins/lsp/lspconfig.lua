@@ -233,6 +233,11 @@ return {
 			capabilities = capabilities,
 			settings = {
 				gopls = {
+					directoryFilters = {
+						"-**/node_modules",
+						"-tmp",
+						"-bin",
+					},
 					analyses = {
 						unusedparams = true,
 						shadow = true,
@@ -276,6 +281,17 @@ return {
 		vim.lsp.config("vtsls", {
 			cmd = shell_cmd("vtsls --stdio"),
 			capabilities = capabilities,
+			root_dir = function(bufnr, on_dir)
+				local file_path = vim.api.nvim_buf_get_name(bufnr)
+				local nearest_root = find_root(file_path, { "tsconfig.json", "jsconfig.json", "package.json" })
+
+				if nearest_root then
+					on_dir(nearest_root)
+					return
+				end
+
+				on_dir(find_root(file_path, { "pnpm-lock.yaml", "package-lock.json", "yarn.lock", "bun.lock", ".git" }) or vim.fn.getcwd())
+			end,
 			init_options = {
 				hostInfo = "neovim",
 			},
